@@ -1,1 +1,0 @@
-gfortran -o pres_append_daily -I/usr/include/ pres_append_daily.f bilin.f -L /usr/lib -lnetcdf -lnetcdff
