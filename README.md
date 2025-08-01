@@ -3,8 +3,8 @@
 
 ## Data Workflow
 1. FNMOC sftp’s 360° x 180° SLP to the server oceanwatch every 6-hours
-   a) Fleet Numerical Meteorology and Oceanography Center (FNMOC, near the airport in Monterey) runs numerical models to generate forecasts of 6-hourly mean sea level pressure and other parameters. (GRIB format)
-   b) These forecasts are used for the Navy fleet but are generally not stored by FNMOC. ERD (PEG, PFEG, PFEL) has gathered, stored, and used this 6-hour model output for decades to generate Bakun Upwelling Index
+- Fleet Numerical Meteorology and Oceanography Center (FNMOC, near the airport in Monterey) runs numerical models to generate forecasts of 6-hourly mean sea level pressure and other parameters. (GRIB format)
+ - These forecasts are used for the Navy fleet but are generally not stored by FNMOC. ERD (PEG, PFEG, PFEL) has gathered, stored, and used this 6-hour model output for decades to generate Bakun Upwelling Index
 2. Cron job on oceanwatch converts the data from GRIB to NetCDF
    a) daily: around 7am a file is generated containing current month’s data: **monthly_pressure.nc** (this file potentially/occasionally has missing data)
    b) monthly: a process runs to add the month’s data to a yearly NetCDF file, calculate Ekman transports and upwelling index. Any missing data is captured in this process. These files, are served on ERDDAP
