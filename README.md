@@ -12,8 +12,8 @@
 4. On oceanview (7:45 am) for OSCURS, **daily FNMOC 6-hr mean sea level pressure (1-degree resolution, 180 x 360) is linearly interpolated to an equal-area 180 x 92 grid** (0000 pressure each day) saved to **this_month_oscurs.nc**, appended to **oscurs_pressure.nc**
  - OSCURS grid:
  - input:
-  - [on ERDDAP](https://coastwatch.pfeg.noaa.gov/erddap/griddap/erdlasFnTransMon.graph?P_msl%5B(202507-09T06:00:00Z)%5D%5B(-90.0):(90.0)%5D%5B(0.0):(359.0)%5D,v%5B(2025-07-09T06:00:00Z)%5D%5B(-90.0):(90.0)%5D%5B(0.0):(359.0)%5D&.draw=surface&.color=0x000000&.bgColor=0xffccccff)
-  - [on THREDDS](https://oceanview.pfeg.noaa.gov/thredds/dodsC/Model/FNMOC/current_month/this_month_transport.nc.html)
+   - [on ERDDAP](https://coastwatch.pfeg.noaa.gov/erddap/griddap/erdlasFnTransMon.graph?P_msl%5B(202507-09T06:00:00Z)%5D%5B(-90.0):(90.0)%5D%5B(0.0):(359.0)%5D,v%5B(2025-07-09T06:00:00Z)%5D%5B(-90.0):(90.0)%5D%5B(0.0):(359.0)%5D&.draw=surface&.color=0x000000&.bgColor=0xffccccff)
+   - [on THREDDS](https://oceanview.pfeg.noaa.gov/thredds/dodsC/Model/FNMOC/current_month/this_month_transport.nc.html)
 - Interpolated output (input to the model):
   - [on ERDDAP](https://coastwatch.pfeg.noaa.gov/erddap/griddap/erdlasFnOscurs.html)
   - [on THREDDS](https://oceanview.pfeg.noaa.gov/thredds/dodsC/oscurs_model/oscurs_pressure.nc.html)
