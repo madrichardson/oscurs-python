@@ -1,0 +1,6 @@
+#These work on ubuntu:
+
+gfortran -g -I/usr/include -c os2.for
+gfortran -g -I/usr/include -ffixed-line-length-none -o os2 os2.o -L/usr/lib -lnetcdf -lnetcdff -lz -lm
+cp os2 /var/www/oscurs
+
