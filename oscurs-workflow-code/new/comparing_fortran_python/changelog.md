@@ -137,23 +137,22 @@ Using the final updated Python scripts, output was compared to the original Fort
 | 2024 | March         | 1.28          | -0.001         | 0.058        | 0.134 %     | 0.000 %     | 0.006 %     |
 | 2024 | June          | 1.01          | 0.000          | 0.049        | 0.102 %     | 0.000 %     | 0.005 %     |
 | 2024 | December      | 1.56          | -0.001         | \~0.06       | 0.165 %     | 0.000 %     | 0.006 %     |
-| 2025 | July(10 days) | **2.51**      | -0.049         | 0.378        | **0.209 %** | -0.006 %    | **0.043 %** |
+| 2025 | July(10 days) | 0.626         | -0.000         | 0.045        | 0.062       | 0.000 %     | 0.004 %     |
 
 ---
 
 Across 5 years and 21 months (2015–2025), results show:
 - Mean differences consistently near 0.000 mb in most months
-- Standard deviation of differences typically 0.04–0.06 mb, except for July 2025 (0.378 mb) during a 10-day pressure subset
-- Max differences ranged from ~0.75 mb (June 2016) to **2.51 mb** (July 2025), indicating rare interpolation anomalies or edge cases
+- Standard deviation of differences typically 0.04–0.06 mb
+- Max differences ranged from ~0.75 mb (June 2016) to 2.19 mb (September 2020), indicating rare interpolation anomalies or edge cases
 
 Largest differences were found in:
 - North Pacific storm tracks during fall/winter (e.g., Dec 2015, Dec 2019)
 - Low-pressure systems over the Bering Sea and Gulf of Alaska
-- July 2025, which showed a localized spike despite mean agreement
 
 Percent Differences:
 - Mean % differences near 0.000% in all cases
-- Max % differences usually < 0.15%, with three exceeding 0.2%: Dec 2015, Sep 2020, and July 2025
+- Max % differences usually < 0.15%, with two exceeding 0.2%: Dec 2015 and Sep 2020
 
 Seasonal and Temporal Consistency:
 - Results are consistent across summer, winter, and transition months
