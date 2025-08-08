@@ -1,4 +1,4 @@
-# OSCURS: Modernizing the Pressure → Model → Web Pipeline
+# OSCURS Python Modernization
 
 OSCURS is an ocean surface currents model historically powered by daily 6-hour FNMOC mean sea level pressure (MSLP) interpolated to an equal-area OSCURS grid and then run via legacy Fortran and a PHP web front end.  
 This repo documents and delivers a **Python-based** replacement that reproduces the Fortran results while modernizing data handling, storage, automation, and the user interface.
