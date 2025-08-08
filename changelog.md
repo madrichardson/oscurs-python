@@ -141,7 +141,7 @@ Using the final updated Python scripts, output was compared to the original Fort
 
 ---
 
-Across 5 years and 21 months (2015–2025), results show:
+Across 5 years and 20 months (2015–2025), results show:
 - Mean differences consistently near 0.000 mb in most months
 - Standard deviation of differences typically 0.04–0.06 mb
 - Max differences ranged from ~0.75 mb (June 2016) to 2.19 mb (September 2020), indicating rare interpolation anomalies or edge cases
