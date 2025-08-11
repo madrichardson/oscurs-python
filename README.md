@@ -68,7 +68,7 @@ The new workflow replaces these with Python-based processes that:
 1. **Develop Python code** to interpolate 1-degree mean sea level pressure (MSLP) to the OSCURS 180×92 grid.  
    - Status: Complete; validated against Fortran outputs.
 2. **Reconfigure the OSCURS pressure file** into chunks (e.g., yearly) so it is smaller and easier to manage.
-3. **Add daily interpolated data** to the yearly file.  
+3. ***Operationalize daily interpolation process** to add daily interpolated data to the yearly file.
    - At set intervals (monthly, yearly), check for and integrate corrections to the data.
 4. **Develop Python code** to run OSCURS, producing results as close as possible to the Fortran code.
 5. **Decide where the model code will reside** (e.g., local, server, hosted repository).
