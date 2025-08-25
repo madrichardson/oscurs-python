@@ -64,8 +64,11 @@ Dependencies
 """
 
 # Import libraries
+import os
 import math
 import numpy as np
+import xarray as xr
+from datetime import datetime, timezone
 
 
 def bilinear_interpolation(x, y, points):
@@ -389,10 +392,10 @@ def points_creator(lat, lon, pmsl):
 
 def interpolate_grid(pmsl, lat_grid, lon_grid):
     """
-    Interpolate a source pressure field onto a target lat/lon grid using 
+    Interpolate a source pressure field onto a target lat/lon grid using
     bilinear interpolation.
 
-    This function loops through each target grid point defined by `lat_grid` 
+    This function loops through each target grid point defined by `lat_grid`
     and `lon_grid` and performs bilinear interpolation using the source
     field `pmsl`. It uses the `points_creator()` function to extract the
     four neighboring grid cell values and `bilinear_interpolation()` to
@@ -481,7 +484,7 @@ def get_time_index(i):
     finer-resolution time array.
 
     This function is used when pressure data are stored at 6-hour intervals
-    (e.g., 00Z, 06Z, 12Z, 18Z), and a coarser index (e.g., for 00Z only) 
+    (e.g., 00Z, 06Z, 12Z, 18Z), and a coarser index (e.g., for 00Z only)
     needs to be mapped back to the corresponding index in the full-resolution
     time array (which includes 4 time steps per day).
 
@@ -501,3 +504,226 @@ def get_time_index(i):
     """
     # Multiply by 4 to access the 00Z time slice within the 6-hourly array
     return i * 4
+
+
+def open_minimal(path):
+    """
+    Open a NetCDF file and return only the Fortran-style OSCURS variables
+    needed for appending into yearly files.
+
+    This function ensures consistency with the legacy Fortran outputs by
+    stripping out auxiliary fields (e.g., latitude, longitude) and retaining
+    only the essential variables:
+      - 'time' (dimension of hours since 1948-01-01)
+      - 'pmsl' (pressure reduced to mean sea level)
+
+    Parameters
+    ----------
+    path : str
+        Path to the NetCDF file to open (daily or monthly OSCURS output).
+
+    Returns
+    -------
+    xarray.Dataset
+        A dataset containing only 'time' and 'pmsl', with dimensions
+        (time, y, x). The structure matches the Fortran-generated yearly
+        files used by OSCURS.
+
+    Raises
+    ------
+    ValueError
+        If neither 'time' nor 'time_series' is present.
+        If 'pmsl' is missing from the dataset.
+    """
+    ds = xr.open_dataset(path, chunks={"time": 31})
+
+    # Handle alternate naming from some NetCDFs
+    if "time" not in ds and "time_series" in ds:
+        ds = ds.rename({"time_series": "time"})
+
+    if "time" not in ds:
+        raise ValueError(f"{path}: no 'time' or 'time_series' variable found")
+    if "pmsl" not in ds:
+        raise ValueError(f"{path}: no 'pmsl' variable found")
+
+    # Ensure only Fortran-style variables are kept
+    return ds[["time", "pmsl"]]
+
+
+def upsert_daily_into_year(ds_year, ds_daily, log_file, threshold=0.01):
+    """
+    Merge a daily OSCURS pressure dataset into a yearly dataset.
+
+    This function appends daily-resolution pressure fields into an existing
+    yearly file while ensuring continuity and consistency:
+      - Non-overlapping time steps from the daily dataset are appended.
+      - Overlapping time steps are compared, and yearly values are replaced
+        only if the maximum absolute difference exceeds the threshold.
+      - Any corrections applied are logged for traceability.
+
+    Parameters
+    ----------
+    ds_year : xarray.Dataset
+        The yearly OSCURS dataset, containing 'time' and 'pmsl'
+        (dimensions: time, y, x).
+    ds_daily : xarray.Dataset
+        The daily OSCURS dataset to merge into the yearly dataset.
+    log_file : str
+        Path to the log file where correction details will be recorded.
+    threshold : float, optional
+        Maximum allowed absolute difference (in millibars) before a
+        replacement is made. Default is 0.01 mb.
+
+    Returns
+    -------
+    xarray.Dataset
+        The updated yearly dataset, containing:
+          - Original data with corrections applied.
+          - All new non-overlapping daily slices appended.
+          - Sorted and deduplicated time dimension.
+    """
+    # Ensure both datasets are sorted along the time axis
+    ds_daily = ds_daily.sortby("time")
+    ds_year = ds_year.sortby("time")
+
+    # Extract raw time arrays for convenience
+    y_times = ds_year.time.values
+    d_times = ds_daily.time.values
+
+    # Build a boolean mask: True where yearly times overlap with daily times
+    overlap_mask = np.isin(y_times, d_times)
+
+    # Keep only the non-overlapping portion of the yearly dataset
+    # If there are overlaps, drop them from ds_year; otherwise keep ds_year unchanged
+    ds_year_wo = (
+        ds_year.sel(time=~xr.DataArray(overlap_mask, dims=("time",)))
+        if overlap_mask.any()
+        else ds_year
+    )
+
+    # If there are overlapping time steps between yearly and daily
+    if overlap_mask.any():
+        # Extract the overlapping slices from yearly
+        y_overlap = ds_year.sel(
+            time=xr.DataArray(y_times[overlap_mask], dims=("time",))
+        )
+        # Extract the overlapping slices from daily (aligned by time)
+        d_overlap = ds_daily.sel(time=y_overlap.time)
+
+        # Loop through each overlapping time step
+        for i, t in enumerate(y_overlap.time.values):
+            # Old pressure values from yearly
+            old_vals = y_overlap["pmsl"].isel(time=i).values
+            # New pressure values from daily
+            new_vals = d_overlap["pmsl"].isel(time=i).values
+            # Compute maximum absolute difference between the two
+            diff = np.nanmax(np.abs(new_vals - old_vals))
+            # If the difference exceeds threshold, replace yearly values with daily
+            if diff > threshold:
+                y_overlap["pmsl"][i] = new_vals
+                # Log the correction for traceability
+                with open(log_file, "a") as log:
+                    log.write(
+                        f"    Correction @ {str(t)} | max Δ {diff:.6f} mb\n"
+                    )
+
+        # Take all daily times not in yearly (non-overlapping new data)
+        d_nonoverlap = ds_daily.sel(time=~np.isin(d_times, y_times))
+
+        # Concatenate:
+        # - yearly without overlaps
+        # - corrected overlap slices
+        # - new non-overlapping daily slices
+        combined = xr.concat([ds_year_wo, y_overlap, d_nonoverlap], dim="time")
+
+    # If there are no overlaps at all, just concatenate yearly + daily directly
+    else:
+        combined = xr.concat([ds_year, ds_daily], dim="time")
+
+    # Return the merged dataset with times sorted and duplicates removed
+    return combined.sortby("time").drop_duplicates("time")
+
+
+def upsert_monthly_into_year(ds_year, ds_monthly, log_file):
+    """
+    Merge a monthly OSCURS pressure dataset into a yearly dataset, ensuring
+    that monthly values always take precedence.
+
+    This function is designed for situations where the yearly file may contain
+    older or less accurate values that should be corrected by higher-fidelity
+    monthly reprocessing. Any overlapping time steps in the yearly dataset
+    are replaced with the corresponding values from the monthly dataset,
+    and these replacements are logged for traceability. Non-overlapping
+    monthly records are appended so that the output contains a complete,
+    deduplicated time series.
+
+    Parameters
+    ----------
+    ds_year : xarray.Dataset
+        Yearly dataset containing `time` and `pmsl` variables. This serves as
+        the base dataset into which monthly values will be merged.
+    ds_monthly : xarray.Dataset
+        Monthly dataset containing `time` and `pmsl` variables. Considered
+        authoritative and used to overwrite or extend the yearly dataset.
+    log_file : str
+        Path to a text log file where overwrite operations are recorded,
+        with one entry per corrected timestamp.
+
+    Returns
+    -------
+    xarray.Dataset
+        A combined dataset containing the original yearly records with
+        monthly corrections applied and any missing monthly records appended.
+        The result is sorted by time and deduplicated to ensure a clean
+        continuous record.
+
+    Raises
+    ------
+    ValueError
+        If either dataset does not contain the required `time` or `pmsl` variables.
+    IOError
+        If the log file cannot be opened for appending during overwrite logging.
+    """
+
+    # Ensure both datasets are sorted by time for consistent merging
+    ds_monthly = ds_monthly.sortby("time")
+    ds_year = ds_year.sortby("time")
+
+    # Extract time values from yearly and monthly datasets
+    y_times = ds_year.time.values
+    m_times = ds_monthly.time.values
+
+    # Boolean mask marking where yearly times overlap with monthly times
+    overlap_mask = np.isin(y_times, m_times)
+
+    # Exclude overlapping times from yearly dataset (if any)
+    ds_year_wo = (
+        ds_year.sel(time=~xr.DataArray(overlap_mask, dims=("time",)))
+        if overlap_mask.any()
+        else ds_year
+    )
+
+    if overlap_mask.any():
+        # Subset yearly and monthly datasets to overlapping times
+        y_overlap = ds_year.sel(
+            time=xr.DataArray(y_times[overlap_mask], dims=("time",))
+        )
+        m_overlap = ds_monthly.sel(time=y_overlap.time)
+
+        # Replace overlapping yearly values with authoritative monthly values
+        for i, t in enumerate(y_overlap.time.values):
+            y_overlap["pmsl"][i] = m_overlap["pmsl"].isel(time=i).values
+            with open(log_file, "a") as log:
+                log.write(f"    Overwrote @ {str(t)}\n")
+
+        # Identify monthly records not already in yearly
+        m_nonoverlap = ds_monthly.sel(time=~np.isin(m_times, y_times))
+
+        # Concatenate yearly without overlaps, updated overlaps, and non-overlap monthly
+        combined = xr.concat([ds_year_wo, y_overlap, m_nonoverlap], dim="time")
+    else:
+        # If no overlaps exist, concatenate directly
+        combined = xr.concat([ds_year, ds_monthly], dim="time")
+
+    # Return dataset sorted by time with duplicate timestamps removed
+    return combined.sortby("time").drop_duplicates("time")
